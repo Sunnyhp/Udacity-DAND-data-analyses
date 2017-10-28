@@ -1,0 +1,521 @@
+红葡萄酒探索性数据分析
+========================================================
+#####本次主要探索红酒品质的好坏和数据集中其他变量之间的关系。
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+#加载本次分析所要用到的包
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(dplyr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# 加载数据
+setwd('~/Documents/P4')
+rw <- read.csv('wineQualityReds.csv')
+```
+
+# Univariate Plots Section
+本次分析的数据中包含13个变量，1599个数据。
+```{r echo=FALSE, Univariate_Plots}
+dim(rw)
+str(rw)
+summary(rw)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = quality, data = rw)
+```
+
+绝大多数葡萄酒的等级分别为5和6，这是为什么呢？接下来看看其他变量的分部情况。
+注解：本次分析中葡萄酒的等级为0到10，数值越大表示质量越好。
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = fixed.acidity, data = rw)
+```
+
+绝大多数葡萄酒中fixed.acidity的含量主要集中在7到11之间。
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = volatile.acidity, data = rw)
+```
+
+绝大多数葡萄酒中volatile.acidity的含量主要集中在0.2到0.7之间。
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = citric.acid, data = rw)
+```
+
+绝大多数葡萄酒中citric.acid的含量主要集中在0到0.5之间,有一部分含量为0。
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = residual.sugar, data = rw)
+```
+
+绝大多数葡萄酒中residual.sugar的含量主要集中在1到3之间。
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = chlorides, data = rw)
+```
+
+绝大多数葡萄酒中chlorides的含量主要集中在0.05到0.11之间。
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = free.sulfur.dioxide, data = rw)
+```
+
+绝大多数葡萄酒中free.sulfur.dioxide的含量主要集中在0到25之间。
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = total.sulfur.dioxide, data = rw)
+```
+
+绝大多数葡萄酒中total.sulfur.dioxide的含量主要集中在0.995到1之间。
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = density, data = rw)
+```
+
+绝大多数葡萄酒中density的含量主要集中在0.995到1之间。
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = pH, data = rw)
+```
+
+绝大多数葡萄酒中pH的含量主要集中在3到3.6之间。
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = sulphates, data = rw)
+```
+
+绝大多数葡萄酒中sulphates的含量主要集中在0.5到0.75之间。
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+qplot(x = alcohol, data = rw)
+```
+
+绝大多数葡萄酒中alcohol的含量主要集中在9到11之间。
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#引入新变量rating
+rw$rating <- ifelse(rw$quality < 5, 'Poor', 
+                    ifelse(rw$quality < 7, 'Average', 'Good'))
+rw$rating <- ordered(rw$rating, levels = c('Poor', 'Average', 'Good'))
+
+summary(rw$rating)
+
+ggplot(aes(rating), data = rw) + 
+  geom_bar()
+
+```
+
+由于红酒的品质等级quality有6级，太过于分散，不便于分析，所以引入新变量rating。
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+该数据集包含1599瓶葡萄酒的数据，含有13个特征(X, fixed.acidity, volatile.acidity, 
+citric.acid, residual.sugar, chlorides, free.sulfur.dioxide, 
+total.sulfur.dioxide, density, pH, sulphates, alcohol, quality), 
+其中quality为有序因子变量。  
+(坏) —————-> (好)  
+quality:3, 4, 5, 6, 7, 8  
+其他发现:  
+部分葡萄酒中citric.acid的含量为0。
+
+### What is/are the main feature(s) of interest in your dataset?
+在这些数据中最感兴趣的是quality,volatile.acidity,free.sulfur.dioxide,sulphates,
+alcohol。我想确定葡萄酒的品质好坏是否与我所感兴趣的几种物质的含量相关。
+
+### What other features in the dataset do you think will help support your investigation into your   feature(s) of interest?
+fixed.acidity, citric.acid,residual.sugar,chlorides,pH的含量也会影响葡萄酒的品质,
+其中fixed.acidity, citric.acid, pH对葡萄酒品质的影响更为主要。    
+
+
+### Did you create any new variables from existing variables in the dataset?
+创建了新的变量rating来表示葡萄酒的品质。
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+没有。
+
+
+# Bivariate Plots Section
+```{r echo=FALSE, message=FALSE, warning=FALSE, Bivariate_Plots}
+#自定义一个函数,实现用boxplot+scatterplot的形式来进行可视化
+box_plot <- function(feature1, feature2) {
+    ggplot(data = rw, aes_string(x = feature1, y = feature2)) + 
+    geom_jitter(alpha = .3) +
+    geom_boxplot( alpha = .5, color = 'blue') +
+    stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red") +
+    geom_smooth(method='lm', aes(group = 1))
+}
+
+box_plot("factor(quality)", "fixed.acidity")
+cor.test(rw$quality, rw$fixed.acidity)$estimate
+
+```
+
+从图中可以看出，fixed.acidity含量和红酒品质呈现出直接相关关系,
+两者相关性为0.124
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "volatile.acidity")
+
+cor.test(rw$quality, rw$volatile.acidity)$estimate
+```
+
+从图中可以看出，volatile.acidity含量和红酒品质呈现出间接相关关系,
+两者相关性为-0.391
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "citric.acid") 
+
+cor.test(rw$quality, rw$citric.acid)$estimate
+```
+
+从图中可以看出，citric.acid含量和红酒品质呈现出直接相关关系,两者相关性为0.226
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "residual.sugar")
+
+cor.test(rw$quality, rw$residual.sugar)$estimate
+```
+
+目前从图中看不出residual.sugar含量和红酒整体品质的关系,两者相关性为0.014
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "chlorides")
+
+cor.test(rw$quality, rw$chlorides)$estimate
+```
+
+目前从图中看不出chlorides含量和红酒整体品质的关系,两者相关性为-0.129
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "free.sulfur.dioxide")
+
+cor.test(rw$quality, rw$free.sulfur.dioxide)$estimate
+```
+
+目前从图中看不出free.sulfur.dioxide含量和红酒整体品质的关系,两者相关性为-0.051
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "total.sulfur.dioxide")
+
+cor.test(rw$quality, rw$total.sulfur.dioxide)$estimate
+```
+
+目前从图中看不出total.sulfur.dioxide含量和红酒整体品质的关系,两者相关性为-0.185
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "density") 
+
+cor.test(rw$quality, rw$density)$estimate
+```
+
+目前从图中看不出density含量和红酒整体品质的关系,两者相关性为-0.175
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "pH")
+
+cor.test(rw$quality, rw$pH)$estimate
+```
+
+从图中可以看出pH值和红酒品质呈现出间接相关关系,两者相关性为-0.058
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "sulphates")
+
+cor.test(rw$quality, rw$sulphates)$estimate
+```
+
+从图中可以看出sulphates值和红酒品质呈现出直接相关关系,两者相关性为0.251
+
+```{r echo=FALSE}
+box_plot("factor(quality)", "alcohol") 
+
+cor.test(rw$quality, rw$alcohol)$estimate
+```
+
+目前从图中看不出alcohol含量和红酒整体品质的关系,两者相关性为0.476
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#分析fixed.acidity和citric.acid之间的关系
+ggplot(aes(x = fixed.acidity, y = citric.acid), data = rw) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+
+cor.test(rw$fixed.acidity, rw$citric.acid)$estimate
+```
+
+从图中可以看出，fixed.acidity和citric.acid之间有一定的关系。
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#分析fixed.acidity和pH之间的关系
+ggplot(aes(x = fixed.acidity, y = pH), data = rw) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+
+cor.test(rw$fixed.acidity, rw$pH)$estimate
+```
+
+从图中可以看出，fixed.acidity和pH之间有一定的关系。
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#分析citric.acid和pH之间的关系
+ggplot(aes(x = citric.acid, y = pH), data = rw) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+
+cor.test(rw$citric.acid, rw$pH)$estimate
+```
+
+从图中可以看出，citric.acid和pH之间有一定的关系。
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+fixed.acidity, citric.acid, sulphates, alcohol和红酒的品质呈现出直接相关关系，
+volatile.acidity, pH和红酒的品质呈现出间接相关关系。
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+fixed.acidity，citric.acid，pH三者之间的含量互相影响。
+三者之间的相关性分别为0.672，-0.683，-0.542
+
+### What was the strongest relationship you found?
+下面变量和红酒的品质相关性比较高:       
+volatile.acidity: -0.391   
+citric.acid: 0.226   
+sulphates: 0.251   
+alcohol: 0.476   
+fixed.acidity，citric.acid，pH三者之间的含量也高度相关，
+分别为0.672，-0.683，-0.542
+
+
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, warning=FALSE, fig.width=8, fig.height=10, Multivariate_Plots}
+#自定义函数
+point_plot <- function(feature1, feature2, feature3) {
+    ggplot(aes_string(x = feature1, y=feature2, color = feature3), data = rw) +
+    geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+    geom_smooth(method = "lm", se = FALSE,size=1) +
+    scale_color_brewer(palette = "Blues")
+}
+
+p1 <- point_plot("volatile.acidity", "citric.acid", "factor(rating)")
+
+p2 <- point_plot("volatile.acidity", "sulphates", "factor(rating)")
+
+p3 <- point_plot("volatile.acidity", "round(alcohol)", "factor(rating)")
+  
+p4 <- point_plot("citric.acid", "sulphates", "factor(rating)")
+
+p5 <- point_plot("citric.acid", "round(alcohol)", "factor(rating)")
+
+p6 <- point_plot("sulphates", "round(alcohol)", "factor(rating)")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 2)
+
+
+```
+
+从图中可以发现，大多数品质为Good的红酒中citric.acid含量偏向于其平均值，
+volatile.acidity含量比较低。大多数品质为Poor的红酒中citric.acid含量比较低，
+volatile.acidity含量偏向于其平均值之上。
+
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+在最初分析时发现由于Poor，Average，Good三者混在一起，而且Average样本值数量比较多，
+导致很难从图中观察相关变量对红酒品质的影响，
+所以在后面的观察中rating只保留Poor，Good。
+最后发现大多数品质为Good的红酒中citric.acid含量偏向于其平均值，
+volatile.acidity含量比较低。大多数品质为Poor的红酒中citric.acid含量比较低，
+volatile.acidity含量偏向于其平均值之上。
+
+### Were there any interesting or surprising interactions between features?
+在之前的双变量分析时发现，sulphates和红酒的品质呈现出正相关，
+但是当rating只保留Poor和Good的时候，
+却很难通过sulphates的含量去区分红酒品质的好坏。
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+没有
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, message=FALSE, warning=FALSE, Plot_One}
+ggplot(data=rw, aes(factor(quality), fill=rating)) + 
+  geom_bar() + 
+  xlab("Quality (score between 0 and 10)") + 
+  ylab("Number of wines")
+```
+
+### Description One
+大多数葡萄酒的品质等级集中在5和6，虽然Quality等级分布范围为0到10，
+但本次红酒样本数据中没有Quality为0,1,2,9,10的红酒。
+
+### Plot Two
+```{r echo=FALSE, message=FALSE, fig.width=8, fig.height=8, Plot_Two}
+b1 <- ggplot(aes(x = factor(quality), y = fixed.acidity), data = rw) + 
+  geom_jitter(alpha=0.3) +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red")+
+  geom_smooth(method='lm', aes(group = 1)) + 
+  xlab('factor(quality) (score between 0 and 10)') + 
+  ylab('Fixed Acidity (tartaric acid - g/dm^3)') + 
+  guides(fill=FALSE)
+
+b2 <- ggplot(aes(x = factor(quality), y = citric.acid), data = rw) +
+  geom_jitter(alpha=0.3) +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red")+
+  geom_smooth(method='lm', aes(group = 1)) +
+  xlab('factor(quality) (score between 0 and 10)') + 
+  ylab('Citric Acid (g/dm^3)') + 
+  guides(fill=FALSE)
+
+b3 <- ggplot(aes(x = factor(quality), y = volatile.acidity), data = rw) + 
+  geom_jitter(alpha=0.3) +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red")+
+  geom_smooth(method='lm', aes(group = 1)) + 
+  xlab('factor(quality) (score between 0 and 10)') + 
+  ylab('Volatile Acidity (acetic acid - g/dm^3)') + 
+  guides(fill=FALSE)
+
+b4 <- ggplot(aes(x = factor(quality), y = pH), data = rw) + 
+  geom_jitter(alpha=0.3) +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red")+
+  geom_smooth(method='lm', aes(group = 1)) + 
+  xlab('factor(quality) (score between 0 and 10)') + 
+  ylab('pH')
+
+grid.arrange(b1, b2, b3, b4, ncol = 2, top='Effect of fixed.acidity, citric.acid and pH on wine quality ratings')
+```
+
+### Description Two
+在品质比较好的葡萄酒中，fixed.acidity和citric.acid含量比较高，
+volatile.acidity含量比较低，PH值也比其他品质葡萄酒要低。虽然酸的含量越多，
+pH值越低，但是只有fixed.acidity和citric.acid的含量增加时才有利于葡萄酒品质的提高。
+
+### Plot Three
+```{r echo=FALSE, fig.width=8, fig.height=10, Plot_Three}
+p1 <- ggplot(aes(x = volatile.acidity, y = citric.acid, color = factor(rating)),
+       data = rw) +
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  scale_color_brewer(palette = "Blues") +
+  xlab('Volatile acidity (cetic acid - g/dm^3)') + 
+  ylab('Citric acid (g/dm^3)') +
+  theme(legend.position="bottom")
+
+p2 <- ggplot(aes(x = sulphates, y = alcohol, color = factor(rating)),
+       data = rw) +
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  scale_color_brewer(palette = "Blues") +
+  xlab('Sulphates (potassium sulphate - g/dm^3)') + 
+  ylab('Alcohol (% by volume)') +
+  theme(legend.position="bottom")
+
+p3 <- ggplot(aes(x = volatile.acidity, y = round(alcohol), color = factor(rating)),
+       data = rw) +
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  scale_color_brewer(palette = "Blues") +
+  xlab('Volatile acidity (acetic acid - g/dm^3)') + 
+  ylab('Alcohol (% by volume)') +
+  theme(legend.position="bottom")
+
+p4 <- ggplot(aes(x = citric.acid, y = sulphates, color = factor(rating)),
+       data = rw) +
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  scale_color_brewer(palette = "Blues") +
+  xlab('Citric acid (g/dm^3)') + 
+  ylab('Sulphates (potassium sulphate - g/dm^3)') +
+  theme(legend.position="bottom")
+
+p5 <- ggplot(aes(x = citric.acid, y = alcohol, color = factor(rating)),
+       data = rw) +
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  scale_color_brewer(palette = "Blues") +
+  xlab('Citric acid (g/dm^3)') + 
+  ylab('Alcohol (% by volume)') +
+  theme(legend.position="bottom")
+
+p6 <- ggplot(aes(x = volatile.acidity, y = sulphates, color = factor(rating)),
+       data = rw) +
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  scale_color_brewer(palette = "Blues") +
+  xlab('Volatile acidity (cetic acid - g/dm^3)') + 
+  ylab('Sulphates (potassium sulphate - g/dm^3)') +
+  theme(legend.position="bottom")
+
+grid.arrange(p1, p2, p3, p4, p5, p6, ncol = 2, 
+             top = paste('comparisson of the main features,', 
+                         'with density maps (grouped by rating)'))
+```
+
+### Description Three
+通过观察发现大多数品质为Good的红酒中citric.acid含量偏向于其平均值，
+volatile.acidity含量比较低。大多数品质为Poor的红酒中citric.acid含量比较低，
+volatile.acidity含量偏向于其平均值之上。
+
+
+------
+
+# Reflection
+本次主要探索红酒品质的好坏和数据集中其他变量之间的关系。
+
+本次分析的数据中包含13个变量，1599个数据。
+在单变量分析部分并不能明确的看出哪种变量对葡萄酒的品质有较大的影响。
+在双变量分析部分发现Quality的数值过于分散，不利于接下来的分析，
+所以引入了新变量rating，rating中包含Poor, Average, Good三个等级。
+
+在双变量分析部分发现:fixed.acidity, citric.acid, sulphates, alcohol
+和红酒的品质呈现出直接相关关系，volatile.acidity, p
+H和红酒的品质呈现出间接相关关系。和红酒的品质相关性比较高的变量如下:        
+volatile.acidity: -0.391       
+citric.acid: 0.226        
+sulphates: 0.251        
+alcohol: 0.476        
+
+在多变量分析部分发现:大多数品质为Good的红酒中citric.acid含量偏向于其平均值，
+volatile.acidity含量比较低。大多数品质为Poor的红酒中citric.acid含量比较低，
+volatile.acidity含量偏向于其平均值之上。
+
+在本次探索分析最初阶段，由于没有提前了解红葡萄酒相关的知识，导致一头雾水，最后去
+了解了葡萄酒的相关知识才有了眉目。
+
+通过本次探索性数据分析发现，引入适当的新变量不仅会使各变量之间的关系更加明了，
+同时也会使分析过程更加容易，同时了解所分析对象的背景知识也显得十分重要。
